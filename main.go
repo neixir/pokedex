@@ -1,16 +1,16 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
+	"strings"
 )
 
-cleanInput(text string) []string {
-    var words []string
+func cleanInput(text string) []string {
+	words := strings.Fields(text)
 
-
-    return words
+	return words
 }
 
 func main() {
-    fmt.Println("Hello, World!")
+	fmt.Println("Hello, World!")
 }
