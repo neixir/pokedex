@@ -57,7 +57,7 @@ func commandMap(config *Config) error {
 	}
 
 	// Actualitzem next i previous
-	config.Previous = &url
+	config.Previous = &area.Previous
 	config.Next = &area.Next
 
 	// Mostrem els noms
@@ -69,7 +69,7 @@ func commandMap(config *Config) error {
 }
 
 func commandMapB(config *Config) error {
-	if config.Previous == nil { // || config.Previous == &PokeApiUrl {
+	if config.Previous == nil {
 		fmt.Println("you're on the first page")
 		return nil
 	}
