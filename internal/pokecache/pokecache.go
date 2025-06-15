@@ -22,7 +22,7 @@ type Cache struct {
 	mu       sync.Mutex
 }
 
-// You'll probably want to expose a NewCache() function that creates a new cache with a configurable interval (time.Duration).
+// Creates a new cache with a configurable interval (time.Duration).
 func NewCache(interval time.Duration) *Cache {
 	newCache := Cache{
 		entries:  map[string]cacheEntry{},

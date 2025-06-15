@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/neixir/pokedex/internal/pokeapi"
+	"github.com/neixir/pokedex/internal/pokecache"
 )
 
 const PokeApiUrl = "https://pokeapi.co/api/v2/location-area/"
@@ -20,8 +22,9 @@ type cliCommand struct {
 // This struct will contain the Next and Previous URLs that you'll need to paginate through location areas.
 // CH2 L1 https://www.boot.dev/lessons/813eafe1-2e1d-42a0-b358-53e0f4d4fdc8
 type Config struct {
-	Next     *string
-	Previous *string
+	Next          *string
+	Previous      *string
+	requestsCache *pokecache.Cache
 }
 
 func cleanInput(text string) []string {
@@ -51,7 +54,7 @@ func commandMap(config *Config) error {
 		url = *config.Next
 	}
 
-	area, err := pokeapi.GetLocationArea(url)
+	area, err := pokeapi.GetLocationArea(url, config.requestsCache)
 	if err != nil {
 		return nil
 	}
@@ -76,7 +79,7 @@ func commandMapB(config *Config) error {
 
 	url := config.Previous
 
-	area, err := pokeapi.GetLocationArea(*url)
+	area, err := pokeapi.GetLocationArea(*url, config.requestsCache)
 	if err != nil {
 		return nil
 	}
@@ -96,7 +99,9 @@ func commandMapB(config *Config) error {
 var supportedCommands = map[string]cliCommand{}
 
 func main() {
-	config := Config{}
+	config := Config{
+		requestsCache: pokecache.NewCache(5 * time.Second),
+	}
 
 	supportedCommands = map[string]cliCommand{
 		"exit": {
