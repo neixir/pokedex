@@ -22,9 +22,11 @@ type cliCommand struct {
 // This struct will contain the Next and Previous URLs that you'll need to paginate through location areas.
 // CH2 L1 https://www.boot.dev/lessons/813eafe1-2e1d-42a0-b358-53e0f4d4fdc8
 type Config struct {
-	Next          *string
-	Previous      *string
-	requestsCache *pokecache.Cache
+	Next               *string
+	Previous           *string
+	Argv               []string
+	locationNamesCache *pokecache.Cache
+	pokemonNamesCache  *pokecache.Cache
 }
 
 func cleanInput(text string) []string {
@@ -49,12 +51,13 @@ func commandHelp(config *Config) error {
 }
 
 func commandMap(config *Config) error {
+	// Aixo de PokeApiUrl ho haura de fer a pokeapi.go
 	url := PokeApiUrl
 	if config.Previous != nil {
 		url = *config.Next
 	}
 
-	area, err := pokeapi.GetLocationArea(url, config.requestsCache)
+	area, err := pokeapi.GetLocationArea(url, config.locationNamesCache)
 	if err != nil {
 		return nil
 	}
@@ -72,6 +75,7 @@ func commandMap(config *Config) error {
 }
 
 func commandMapB(config *Config) error {
+	// Aixo de PokeApiUrl ho haura de fer a pokeapi.go
 	if config.Previous == nil {
 		fmt.Println("you're on the first page")
 		return nil
@@ -79,7 +83,7 @@ func commandMapB(config *Config) error {
 
 	url := config.Previous
 
-	area, err := pokeapi.GetLocationArea(*url, config.requestsCache)
+	area, err := pokeapi.GetLocationArea(*url, config.locationNamesCache)
 	if err != nil {
 		return nil
 	}
@@ -96,11 +100,37 @@ func commandMapB(config *Config) error {
 	return nil
 }
 
+func commandExplore(config *Config) error {
+	var areaName string
+
+	if len(config.Argv) >= 2 {
+		areaName = config.Argv[1]
+	} else {
+		return fmt.Errorf("missing parameter <area name>")
+	}
+
+	fmt.Printf("Exploring %s...\n", areaName)
+
+	names, err := pokeapi.GetPokemonByArea(areaName, config.locationNamesCache)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Found Pokemon:")
+	for _, name := range names {
+		fmt.Printf("- %s\n", name)
+	}
+
+	return nil
+
+}
+
 var supportedCommands = map[string]cliCommand{}
 
 func main() {
 	config := Config{
-		requestsCache: pokecache.NewCache(5 * time.Second),
+		locationNamesCache: pokecache.NewCache(5 * time.Second),
+		pokemonNamesCache:  pokecache.NewCache(20 * time.Second),
 	}
 
 	supportedCommands = map[string]cliCommand{
@@ -124,6 +154,11 @@ func main() {
 			description: "Displays the 20 names of 20 previous location areas in the Pokemon world",
 			callback:    commandMapB,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Lists all the pokemon located in an area",
+			callback:    commandExplore,
+		},
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -132,11 +167,14 @@ func main() {
 
 		scanner.Scan()
 		input := scanner.Text()
-		clean := cleanInput(input)
+		config.Argv = cleanInput(input)
 
-		if len(clean) > 0 {
-			command, ok := supportedCommands[clean[0]]
+		if len(config.Argv) > 0 {
+			command, ok := supportedCommands[config.Argv[0]]
 			if ok {
+				// clean[1] nomes funcionara amb "explore", amb la resta petara...
+				// el que hauriem de fer es posar clean a config
+				// i dins de la funcio agafar mes elements si cal
 				err := command.callback(&config)
 				if err != nil {
 					fmt.Println(err)
