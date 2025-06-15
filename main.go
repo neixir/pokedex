@@ -2,13 +2,14 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"strings"
+
+	"github.com/neixir/pokedex/internal/pokeapi"
 )
+
+const PokeApiUrl = "https://pokeapi.co/api/v2/location-area/"
 
 type cliCommand struct {
 	name        string
@@ -23,49 +24,10 @@ type Config struct {
 	Previous *string
 }
 
-type LocationArea struct {
-	Count    int    `json:"count"`
-	Next     string `json:"next"`
-	Previous string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
-}
-
 func cleanInput(text string) []string {
 	words := strings.Fields(strings.ToLower(text))
 
 	return words
-}
-
-func getLocationArea(url string) (LocationArea, error) {
-	area := LocationArea{}
-
-	// https://pkg.go.dev/net/http#example-Get
-	res, err := http.Get(url)
-	if err != nil {
-		return area, fmt.Errorf("could not connect to PokeAPI")
-	}
-
-	body, err := io.ReadAll(res.Body)
-	if res.StatusCode > 299 {
-		return area, fmt.Errorf("response failed with status code: %d", res.StatusCode)
-	}
-	if err != nil {
-		return area, err
-	}
-
-	defer res.Body.Close()
-
-	// https://blog.boot.dev/golang/json-golang/#example-unmarshal-json-to-struct-decode
-	area = LocationArea{}
-	err = json.Unmarshal(body, &area)
-	if err != nil {
-		return area, err
-	}
-
-	return area, nil
 }
 
 func commandExit(config *Config) error {
@@ -84,12 +46,12 @@ func commandHelp(config *Config) error {
 }
 
 func commandMap(config *Config) error {
-	url := "https://pokeapi.co/api/v2/location-area/"
+	url := PokeApiUrl
 	if config.Previous != nil {
 		url = *config.Next
 	}
 
-	area, err := getLocationArea(url)
+	area, err := pokeapi.GetLocationArea(url)
 	if err != nil {
 		return nil
 	}
@@ -107,14 +69,14 @@ func commandMap(config *Config) error {
 }
 
 func commandMapB(config *Config) error {
-	if config.Previous == nil {
+	if config.Previous == nil { // || config.Previous == &PokeApiUrl {
 		fmt.Println("you're on the first page")
 		return nil
 	}
 
 	url := config.Previous
 
-	area, err := getLocationArea(*url)
+	area, err := pokeapi.GetLocationArea(*url)
 	if err != nil {
 		return nil
 	}
