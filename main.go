@@ -155,9 +155,9 @@ func commandCatch(config *Config) error {
 		return err
 	}
 
-	// You can use the pokemon's "base experience" to determine the chance of catching it.
-	fmt.Printf("Trying to catch %s (base experience %d).\n", pokemon.Name, pokemon.BaseExperience)
+	// fmt.Printf("Trying to catch %s (base experience %d).\n", pokemon.Name, pokemon.BaseExperience)
 
+	// You can use the pokemon's "base experience" to determine the chance of catching it.
 	// The higher the base experience, the harder it should be to catch.
 	// https://claude.ai/chat/b741ba22-fbfa-4a87-9ef5-02335c9a5bfd
 	// Power Decay
@@ -175,6 +175,35 @@ func commandCatch(config *Config) error {
 
 	return nil
 
+}
+
+func commandInspect(config *Config) error {
+	var pokemonName string
+
+	if len(config.Argv) >= 2 {
+		pokemonName = config.Argv[1]
+	} else {
+		return fmt.Errorf("missing parameter <pokemon name>")
+	}
+
+	pokemon, ok := config.caughtPokemon[pokemonName]
+	if ok {
+		fmt.Printf("Name: %s\n", pokemon.Name)
+		fmt.Printf("Height: %v\n", pokemon.Height)
+		fmt.Printf("Weight: %v\n", pokemon.Weight)
+		fmt.Println("Stats:")
+		for _, stat := range pokemon.Stats {
+			fmt.Printf("  -%v: %v\n", stat.Stat.Name, stat.BaseStat)
+		}
+		fmt.Println("Types:")
+		for _, typ := range pokemon.Types {
+			fmt.Printf("  -%v\n", typ.Type.Name)
+		}
+	} else {
+		fmt.Println("you have not caught that pokemon")
+	}
+
+	return nil
 }
 
 var supportedCommands = map[string]cliCommand{}
@@ -197,26 +226,40 @@ func main() {
 			description: "Displays a help message", // "Lists all available commands",
 			callback:    commandHelp,
 		},
+
+		// C2 L1 https://www.boot.dev/lessons/813eafe1-2e1d-42a0-b358-53e0f4d4fdc8
 		"map": {
 			name:        "map",
 			description: "Displays the names of 20 location areas in the Pokemon world",
 			callback:    commandMap,
 		},
+
+		// C2 L1 https://www.boot.dev/lessons/813eafe1-2e1d-42a0-b358-53e0f4d4fdc8
 		"mapb": {
 			name:        "mapb",
 			description: "Displays the 20 names of 20 previous location areas in the Pokemon world",
 			callback:    commandMapB,
 		},
+
+		// C2 L3 https://www.boot.dev/lessons/e53abbb4-5d8a-4feb-ba08-828f03311e51
 		"explore": {
 			name:        "explore",
 			description: "Lists all the pokemon located in an area",
 			callback:    commandExplore,
 		},
+
 		// C2 L4 https://www.boot.dev/lessons/ed962683-cb2d-4989-99e9-5cfa144810b5
 		"catch": {
 			name:        "catch",
 			description: "Catching Pokemon adds them to the user's Pokedex",
 			callback:    commandCatch,
+		},
+
+		// C2 L5 https://www.boot.dev/lessons/0911b406-0b43-4bfe-b60c-177d859093e1
+		"inspect": {
+			name:        "inspect",
+			description: "Prints the name, height, weight, stats and type(s) of the Pokemon",
+			callback:    commandInspect,
 		},
 	}
 
