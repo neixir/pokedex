@@ -40,16 +40,6 @@ func cleanInput(text string) []string {
 }
 
 func commandExit(config *Config) error {
-	// Mostrem els pokemons que s'han obtingut
-	if len(config.caughtPokemon) > 0 {
-		fmt.Println("Pokemon caught:")
-		for _, pokemon := range config.caughtPokemon {
-			fmt.Printf("- %s (%d XP)\n", pokemon.Name, pokemon.BaseExperience)
-		}
-	} else {
-		fmt.Println("0 pokemon caught :(")
-	}
-
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
@@ -206,6 +196,20 @@ func commandInspect(config *Config) error {
 	return nil
 }
 
+// Mostrem els pokemons que s'han obtingut
+func commandPokedex(config *Config) error {
+	if len(config.caughtPokemon) > 0 {
+		fmt.Println("Your Pokedex:")
+		for _, pokemon := range config.caughtPokemon {
+			fmt.Printf("- %s (%d XP)\n", pokemon.Name, pokemon.BaseExperience)
+		}
+	} else {
+		fmt.Println("Your Pokedex is empty :(")
+	}
+
+	return nil
+}
+
 var supportedCommands = map[string]cliCommand{}
 
 func main() {
@@ -260,6 +264,13 @@ func main() {
 			name:        "inspect",
 			description: "Prints the name, height, weight, stats and type(s) of the Pokemon",
 			callback:    commandInspect,
+		},
+
+		// C3 L1 https://www.boot.dev/lessons/104a68ca-cea7-42ef-9321-fb8270000db2
+		"pokedex": {
+			name:        "pokedex",
+			description: "Prints a list of all the names of the Pokemon the user has caught",
+			callback:    commandPokedex,
 		},
 	}
 
