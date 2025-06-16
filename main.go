@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -27,6 +29,8 @@ type Config struct {
 	Argv               []string
 	locationNamesCache *pokecache.Cache
 	pokemonNamesCache  *pokecache.Cache
+	// I used a map[string]Pokemon to keep track of caught Pokemon.
+	caughtPokemon map[string]pokeapi.PokemonType
 }
 
 func cleanInput(text string) []string {
@@ -36,6 +40,16 @@ func cleanInput(text string) []string {
 }
 
 func commandExit(config *Config) error {
+	// Mostrem els pokemons que s'han obtingut
+	if len(config.caughtPokemon) > 0 {
+		fmt.Println("Pokemon caught:")
+		for _, pokemon := range config.caughtPokemon {
+			fmt.Printf("- %s (%d XP)\n", pokemon.Name, pokemon.BaseExperience)
+		}
+	} else {
+		fmt.Println("0 pokemon caught :(")
+	}
+
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
@@ -111,7 +125,7 @@ func commandExplore(config *Config) error {
 
 	fmt.Printf("Exploring %s...\n", areaName)
 
-	names, err := pokeapi.GetPokemonByArea(areaName, config.locationNamesCache)
+	names, err := pokeapi.GetPokemonNamesByArea(areaName, config.locationNamesCache)
 	if err != nil {
 		return err
 	}
@@ -125,12 +139,51 @@ func commandExplore(config *Config) error {
 
 }
 
+func commandCatch(config *Config) error {
+	var pokemonName string
+
+	if len(config.Argv) >= 2 {
+		pokemonName = config.Argv[1]
+	} else {
+		return fmt.Errorf("missing parameter <pokemon name>")
+	}
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+
+	pokemon, err := pokeapi.GetPokemon(pokemonName)
+	if err != nil {
+		return err
+	}
+
+	// You can use the pokemon's "base experience" to determine the chance of catching it.
+	fmt.Printf("Trying to catch %s (base experience %d).\n", pokemon.Name, pokemon.BaseExperience)
+
+	// The higher the base experience, the harder it should be to catch.
+	// https://claude.ai/chat/b741ba22-fbfa-4a87-9ef5-02335c9a5bfd
+	// Power Decay
+	probability := int(100 / math.Pow(float64(pokemon.BaseExperience), 0.2))
+	random := rand.Intn(100)
+	if random < probability {
+		fmt.Printf("%s was caught!\n", pokemonName)
+		// fmt.Printf("%v < %v\n", random, probability)
+		// Once the Pokemon is caught, add it to the user's Pokedex.
+		config.caughtPokemon[pokemonName] = pokemon
+	} else {
+		fmt.Printf("%s escaped!\n", pokemonName)
+		// fmt.Printf("%v >= %v\n", random, probability)
+	}
+
+	return nil
+
+}
+
 var supportedCommands = map[string]cliCommand{}
 
 func main() {
 	config := Config{
 		locationNamesCache: pokecache.NewCache(5 * time.Second),
 		pokemonNamesCache:  pokecache.NewCache(20 * time.Second),
+		caughtPokemon:      map[string]pokeapi.PokemonType{},
 	}
 
 	supportedCommands = map[string]cliCommand{
@@ -159,6 +212,12 @@ func main() {
 			description: "Lists all the pokemon located in an area",
 			callback:    commandExplore,
 		},
+		// C2 L4 https://www.boot.dev/lessons/ed962683-cb2d-4989-99e9-5cfa144810b5
+		"catch": {
+			name:        "catch",
+			description: "Catching Pokemon adds them to the user's Pokedex",
+			callback:    commandCatch,
+		},
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -172,9 +231,6 @@ func main() {
 		if len(config.Argv) > 0 {
 			command, ok := supportedCommands[config.Argv[0]]
 			if ok {
-				// clean[1] nomes funcionara amb "explore", amb la resta petara...
-				// el que hauriem de fer es posar clean a config
-				// i dins de la funcio agafar mes elements si cal
 				err := command.callback(&config)
 				if err != nil {
 					fmt.Println(err)

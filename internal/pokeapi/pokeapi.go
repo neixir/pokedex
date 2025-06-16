@@ -12,83 +12,7 @@ import (
 )
 
 const LocationAreaUrl = "https://pokeapi.co/api/v2/location-area/"
-
-type LocationArea struct {
-	Count    int    `json:"count"`
-	Next     string `json:"next"`
-	Previous string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
-}
-
-type LocationAreaInfo struct {
-	EncounterMethodRates []EncounterMethodRates `json:"encounter_method_rates"`
-	GameIndex            int                    `json:"game_index"`
-	ID                   int                    `json:"id"`
-	Location             Location               `json:"location"`
-	Name                 string                 `json:"name"`
-	Names                []Names                `json:"names"`
-	PokemonEncounters    []PokemonEncounters    `json:"pokemon_encounters"`
-}
-type EncounterMethod struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-type Version struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-//	type VersionDetails struct {
-//		Rate    int     `json:"rate"`
-//		Version Version `json:"version"`
-//	}
-type EncounterMethodRates struct {
-	EncounterMethod EncounterMethod `json:"encounter_method"`
-	//VersionDetails  []VersionDetails `json:"version_details"`
-	VersionDetails []struct {
-		Rate    int     `json:"rate"`
-		Version Version `json:"version"`
-	} `json:"version_details"`
-}
-type Location struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-type Language struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-type Names struct {
-	Language Language `json:"language"`
-	Name     string   `json:"name"`
-}
-type Pokemon struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-type Method struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-type EncounterDetails struct {
-	Chance          int    `json:"chance"`
-	ConditionValues []any  `json:"condition_values"`
-	MaxLevel        int    `json:"max_level"`
-	Method          Method `json:"method"`
-	MinLevel        int    `json:"min_level"`
-}
-type VersionDetails struct {
-	EncounterDetails []EncounterDetails `json:"encounter_details"`
-	MaxChance        int                `json:"max_chance"`
-	Version          Version            `json:"version"`
-}
-type PokemonEncounters struct {
-	Pokemon        Pokemon          `json:"pokemon"`
-	VersionDetails []VersionDetails `json:"version_details"`
-}
+const PokemonUrl = "https://pokeapi.co/api/v2/pokemon/"
 
 func GetLocationArea(url string, cache *pokecache.Cache) (LocationArea, error) {
 	area := LocationArea{}
@@ -127,7 +51,7 @@ func GetLocationArea(url string, cache *pokecache.Cache) (LocationArea, error) {
 	return area, nil
 }
 
-func GetPokemonByArea(areaName string, cache *pokecache.Cache) ([]string, error) {
+func GetPokemonNamesByArea(areaName string, cache *pokecache.Cache) ([]string, error) {
 	names := []string{}
 
 	url := fmt.Sprintf("%s%s", LocationAreaUrl, areaName)
@@ -172,4 +96,35 @@ func GetPokemonByArea(areaName string, cache *pokecache.Cache) ([]string, error)
 	}
 
 	return names, nil
+}
+
+// TODO Utilitzar cache
+func GetPokemon(name string) (PokemonType, error) {
+	pokemon := PokemonType{}
+	url := PokemonUrl + name
+
+	res, err := http.Get(url)
+	if err != nil {
+		return pokemon, fmt.Errorf("could not connect to PokeAPI")
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if res.StatusCode > 299 {
+		if res.StatusCode == 404 {
+			return pokemon, fmt.Errorf("response failed with status code: %d (probably no pokemon with that name)", res.StatusCode)
+		}
+		return pokemon, fmt.Errorf("response failed with status code: %d", res.StatusCode)
+	}
+	if err != nil {
+		return pokemon, err
+	}
+
+	defer res.Body.Close()
+
+	err = json.Unmarshal(body, &pokemon)
+	if err != nil {
+		return pokemon, err
+	}
+
+	return pokemon, nil
 }
